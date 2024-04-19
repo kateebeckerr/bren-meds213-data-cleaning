@@ -1,0 +1,214 @@
+---
+title: "eds213_data_cleaning_assign_KATEBECKER"
+format: html
+Author: Kate Becker
+---
+
+# Assignment #2 
+
+## Data Cleaning
+
+### Libraries 
+```{r}
+library(tidyverse)
+```
+
+
+### Data Read in
+```{r}
+# data read in 
+snow_data <- read.csv("/Users/katebecker/Documents/Bren/Spring/213-relational/week2/bren-meds213-data-cleaning/data/processed/snow_cover.csv")
+
+# summarizing data
+snow_data %>%
+  glimpse()
+
+# configuring file paths 
+datadir_raw <- "data/raw/"
+datadir_processed <- "data/processed/"
+species_file <- "ASDN_Daily_species.csv"
+snowsurvey_file <- "ASDN_Snow_survey.csv"
+```
+
+
+```{r}
+#check:
+snow_data %>%
+  count(Snow_cover) %>%
+   filter(is.na(as.numeric(Snow_cover)))
+```
+
+#### Snow_cover wrangled in .qmd from class
+
+1. Clean the `Land_cover` column to transform it into the correct data type and respect expectations for a percentage
+
+```{r}
+# check: NA values and counts
+snow_data %>%
+  count(Land_cover) %>%
+   filter(is.na(as.numeric(Land_cover)))
+
+# removing any erroneous characters and replacing with NA
+land_cover_fixed <- snow_data %>%
+  mutate(Land_cover = ifelse(Land_cover==".", NA, Land_cover)) %>%
+  mutate(Land_cover = ifelse(Land_cover=="-", NA, Land_cover)) %>%
+  mutate(Land_cover = ifelse(Land_cover=="n/a", NA, Land_cover)) %>%
+  mutate(Land_cover = ifelse(Land_cover=="unk", NA, Land_cover))
+
+# check to see if code above worked 
+land_cover_fixed %>%
+  count(Land_cover) %>%
+   filter(is.na(as.numeric(Land_cover)))
+```
+
+
+```{r}
+# in land_cover column replace nay values less than 1 with a 0
+land_cover_fixed <-land_cover_fixed %>% 
+    mutate(Land_cover = ifelse(Land_cover=="<1", "0", Land_cover))
+
+# change land_cover from character to numeric 
+land_cover_fixed <- land_cover_fixed %>%
+  mutate(Land_cover = as.numeric(Land_cover))
+
+# check
+glimpse(land_cover_fixed)
+
+# check to see if there are values above 100%
+land_cover_fixed %>%
+  filter(Land_cover > 100)
+
+# replacing any value above 100 with an NA in the Land_cover column
+land_cover_fixed <- land_cover_fixed %>%
+  mutate(Land_cover = ifelse(Land_cover > 100, NA, Land_cover))
+
+ # check to see if there are values below 0%
+land_cover_fixed %>%
+  filter(Land_cover < 0) 
+
+# replacing any values below 0 with an NA
+land_cover_fixed <- land_cover_fixed %>%
+  mutate(Land_cover = ifelse(Land_cover < 0, NA, Land_cover))
+
+# check to see if code above worked
+land_cover_fixed %>%
+  filter(Land_cover > 100) 
+
+# add wrangled data from land_cover_fixed to snow_cover.csv 
+write_csv(land_cover_fixed, file.path(datadir_processed, "snow_cover.csv"))
+
+```
+
+
+2. Clean the `Water_cover` column to transform it into the correct data type and respect expectations for a percentage
+
+```{r}
+# check: NA values and counts
+snow_data %>%
+  count(Water_cover) %>%
+   filter(is.na(as.numeric(Water_cover)))
+
+# removing any erroneous characters and replacing with NA
+water_cover_fixed <- snow_data %>%
+  mutate(Water_cover = ifelse(Water_cover==".", NA, Water_cover)) %>%
+  mutate(Water_cover = ifelse(Water_cover=="-", NA, Water_cover)) %>%
+  mutate(Water_cover = ifelse(Water_cover=="n/a", NA, Water_cover)) %>%
+  mutate(Water_cover = ifelse(Water_cover=="unk", NA, Water_cover))
+
+# check: NA values and counts in Water_cover column
+water_cover_fixed %>%
+  count(Water_cover) %>%
+   filter(is.na(as.numeric(Water_cover)))
+
+# in land_cover column replace any values less than 1 with a 0
+water_cover_fixed <-water_cover_fixed %>% 
+    mutate(Water_cover = ifelse(Water_cover=="<1", "0", Water_cover))
+
+# check to see if code abvoe worked 
+water_cover_fixed %>%
+  count(Water_cover) %>%
+  filter(is.na(as.numeric(Water_cover))) 
+
+# convert Water_cover variable from a character to a numeric
+water_cover_fixed <- water_cover_fixed %>%
+  mutate(Water_cover = as.numeric(Water_cover))
+
+# check df again
+glimpse(water_cover_fixed)
+
+# check to see if there any values over 100% in Water_cover
+water_cover_fixed %>%
+  filter(Water_cover > 100)
+
+# # all values above 100% in Water_cover repalced with NA
+water_cover_fixed <- water_cover_fixed %>%
+  mutate(Water_cover = ifelse(Water_cover > 100, NA, Water_cover))
+
+# check to see if above code worked correctly
+water_cover_fixed %>%
+  filter(Water_cover < 0)
+ 
+water_cover_fixed %>%
+  filter(Water_cover > 100)
+
+# add wrangled data from water_cover to snow_cover.csv 
+write_csv(water_cover_fixed, file.path(datadir_processed, "snow_cover.csv"))
+
+```
+
+```{r}
+# look at updated snow_cover.csv
+
+snow_processed <- read_csv("/Users/katebecker/Documents/Bren/Spring/213-relational/week2/bren-meds213-data-cleaning/data/processed/snow_cover.csv") %>%
+  glimpse()
+```
+
+
+```{r}
+#checks: 
+snow_processed %>%
+  count(Water_cover) %>%
+   filter(is.na(as.numeric(Water_cover)))
+
+snow_processed %>%
+  count(Land_cover) %>%
+   filter(is.na(as.numeric(Land_cover)))
+
+snow_processed %>%
+  count(Snow_cover) %>%
+   filter(is.na(as.numeric(Snow_cover)))
+
+snow_processed %>%
+  filter(Water_cover< 0) 
+
+snow_processed %>%
+  filter(Water_cover> 100) 
+# snow cover, land_cover both 
+
+
+```
+
+3. Use the relationship between the three cover columns (Snow, Water, Land) to infer missing values where possible and recompute the `Total_cover` column
+
+#### Recomputing
+```{r}
+# change land_cover variable from character to a numeric 
+snow_processed$Land_cover <- as.numeric(snow_processed$Land_cover)
+
+# Calculate row-wise means for columns Land_cover, Snow_cover, and Water_cover
+snow_processed <- snow_processed %>%
+  mutate(TotalCov = rowMeans(select(., Land_cover, Snow_cover, Water_cover), na.rm = TRUE))
+
+# Print the updated dataframe
+print(snow_processed)
+
+
+```
+
+```{r}
+write_csv(water_cover_fixed, file.path(datadir_processed, "all_cover_fixed.KATEBECKER.csv"))
+```
+
+#### Inference
+
+The NAs in this data set may be explained by data collection error such as separate observers that may collect data differently such as the use of unk, n/a, -, and . when referencing NA's or simply the presence of a decimal in a numeric observation. Another source of error could have arose due to bad weather conditions and site inaccessibility which would cause gaps in data collection. 
